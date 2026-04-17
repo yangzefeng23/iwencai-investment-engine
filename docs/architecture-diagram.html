@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iwencai-investment-engine · 技术架构</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens ── */
+:root {
+  --bg-page:   #F8F7F4;
+  --bg-side:   #F9F9F6;
+  --bg:        #FDFCFB;
+  --bg2:       #F2F1EE;
+  --bg3:       #E7E5E1;
+  --card:      #FFFFFF;
+  --text:      #2A2520;
+  --muted:     #3E3430;
+  --faint:     #6B6058;
+  --line:      rgba(42,37,32,0.09);
+  --dashed:    rgba(42,37,32,0.16);
+  --amber:     #9E7A45;
+  --amber-lo:  rgba(158,122,69,0.09);
+  --amber-bd:  rgba(158,122,69,0.28);
+  --amber-hi:  rgba(158,122,69,0.55);
+  --blue-lo:   rgba(72,95,155,0.07);
+  --blue-bd:   rgba(72,95,155,0.22);
+  --green-lo:  rgba(60,120,80,0.07);
+  --green-bd:  rgba(60,120,80,0.22);
+  --pink-lo:   rgba(140,74,96,0.07);
+  --pink-bd:   rgba(140,74,96,0.22);
+  --teal-lo:   rgba(40,120,130,0.07);
+  --teal-bd:   rgba(40,120,130,0.22);
+  --float-lift: translateY(-4px) scale(1.008);
+  --float-shadow-rest: 0 4px 12px rgba(42,37,32,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+  --float-shadow-strong: 0 5px 14px rgba(42,37,32,0.09), inset 0 1px 0 rgba(255,255,255,0.6);
+  --float-shadow-hover: 0 10px 28px rgba(42,37,32,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
+  --sw: 270px;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+html { height:100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-page);
+  color: var(--text);
+  height: 100%; overflow: hidden;
+  display: flex;
+}
+
+/* ════════════════════════ SIDEBAR ════════════════════════ */
+.sidebar {
+  width: var(--sw); min-width: var(--sw);
+  height: 100vh;
+  background: var(--bg-side);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  z-index: 10;
+}
+.sidebar::before {
+  content: '';
+  position: absolute; top: -80px; left: -40px;
+  width: 260px; height: 260px;
+  background: radial-gradient(ellipse, rgba(158,122,69,0.13) 0%, transparent 65%);
+  pointer-events: none;
+  animation: glowPulse 6s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%,100% { opacity: 0.7; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.12); }
+}
+.brand {
+  padding: 1.75rem 1.5rem 1.25rem;
+  position: relative; z-index: 1;
+}
+.brand-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.28rem; font-weight: 500; line-height: 1.25;
+  color: var(--text); margin-bottom: 0.5rem;
+  letter-spacing: 0.01em;
+}
+.brand-subtitle {
+  font-size: 0.68rem; font-weight: 400;
+  color: var(--faint); line-height: 1.6;
+  margin-bottom: 0.875rem;
+}
+.brand-tags {
+  display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.875rem;
+}
+.brand-tag {
+  font-size: 0.6rem; font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--amber); background: var(--amber-lo);
+  border: 1px solid var(--amber-bd); border-radius: 3px;
+  padding: 0.12rem 0.42rem;
+}
+.brand-slogan {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic; font-size: 0.82rem; font-weight: 400;
+  color: var(--muted); line-height: 1.7;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.side-div { height: 1px; background: var(--line); margin: 0 1.5rem; }
+.sidebar-nav { flex: 1; padding: 0.75rem 0; position: relative; overflow: hidden; }
+.nav-indicator {
+  position: absolute; left: 0;
+  width: 2.5px; border-radius: 0 2px 2px 0;
+  background: var(--amber);
+  transition: top 0.35s cubic-bezier(0.34,1.56,0.64,1), height 0.25s ease;
+  z-index: 2;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 0.625rem;
+  width: 100%; padding: 0.6rem 1.5rem;
+  font-size: 0.8rem; font-weight: 400; color: var(--faint);
+  background: none; border: none; cursor: pointer; text-align: left;
+  transition: color 0.2s, background 0.2s;
+  position: relative; border-radius: 0;
+}
+.nav-item:hover { color: var(--muted); background: rgba(158,122,69,0.04); }
+.nav-item.active { color: var(--text); font-weight: 500; }
+.nav-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--faint); flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.nav-item.active .nav-dot { background: var(--amber); transform: scale(1.3); }
+.side-footer {
+  padding: 1rem 1.5rem;
+  font-size: 0.62rem; color: var(--faint);
+  border-top: 1px solid var(--line);
+}
+
+/* ════════════════════════ MAIN ════════════════════════ */
+.main-content { flex: 1; height: 100vh; position: relative; overflow: hidden; }
+.panel {
+  position: absolute; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 2rem 4rem 2.5rem;
+  opacity: 0; pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  display: flex; flex-direction: column; align-items: center; width: 100%;
+}
+.panel > * { max-width: 800px; width: 100%; }
+.panel.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.panel::-webkit-scrollbar { width: 4px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+.panel::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
+/* Panel header */
+.ph { margin-bottom: 1.5rem; }
+.ph h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.9rem; font-weight: 500;
+  letter-spacing: 0.02em; color: var(--text);
+  margin-bottom: 0.3rem;
+}
+.ph p { font-size: 0.76rem; font-weight: 300; color: var(--muted); line-height: 1.7; }
+
+/* Eyebrow */
+.eye {
+  font-size: 0.56rem; font-weight: 500;
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--faint);
+}
+/* Sub-label */
+.sl {
+  font-size: 0.68rem; color: var(--muted);
+  margin: 0.875rem 0 0.5rem;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.sl::after { content:''; flex:1; height:1px; background: var(--line); }
+
+/* Grid helpers */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.g3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.5rem; }
+.g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.5rem; }
+
+/* Float language */
+:is(.card, .arch-row, .mode-card, .src-card, .loop-wrap, .runtime-box, .ext-card, .adr-item, .skills-box) {
+  --card-hover-border: var(--amber-bd);
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+:is(.card, .arch-row, .src-card, .ext-card, .adr-item) { box-shadow: var(--float-shadow-rest); }
+:is(.mode-card, .loop-wrap, .runtime-box, .skills-box) { box-shadow: var(--float-shadow-strong); }
+:is(.card, .arch-row, .mode-card, .src-card, .loop-wrap, .runtime-box, .ext-card, .adr-item, .skills-box):hover {
+  transform: var(--float-lift);
+  box-shadow: var(--float-shadow-hover);
+  border-color: var(--card-hover-border);
+}
+
+/* Card base */
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 0.8rem 0.9rem;
+}
+.card.a { border-color: var(--amber-bd); background: var(--amber-lo); --card-hover-border: var(--amber-bd); }
+.card.b { border-color: var(--blue-bd);  background: var(--blue-lo);  --card-hover-border: var(--blue-bd); }
+.card.g { border-color: var(--green-bd); background: var(--green-lo); --card-hover-border: var(--green-bd); }
+.card.p { border-color: var(--pink-bd);  background: var(--pink-lo);  --card-hover-border: var(--pink-bd); }
+.card.t { border-color: var(--teal-bd);  background: var(--teal-lo);  --card-hover-border: var(--teal-bd); }
+.cn { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.72rem; color: var(--faint); margin-bottom: 0.28rem; }
+.ct { font-size: 0.88rem; font-weight: 500; margin-bottom: 0.22rem; }
+.ck { font-size: 0.68rem; font-weight: 300; color: var(--muted); margin-bottom: 0.18rem; }
+.cd { font-size: 0.67rem; color: var(--faint); line-height: 1.5; }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 0.28rem; margin-top: 0.45rem; }
+.chip {
+  font-size: 0.6rem; color: var(--muted); background: var(--bg3);
+  border: 1px solid var(--line); border-radius: 3px; padding: 0.1rem 0.4rem;
+  transition: background 0.18s, color 0.18s;
+}
+.chip:hover { background: var(--bg); color: var(--text); }
+.chip.a { background: var(--amber-lo); border-color: var(--amber-bd); color: var(--amber); }
+.chip.b { background: var(--blue-lo);  border-color: var(--blue-bd);  color: #485F9B; }
+.chip.g { background: var(--green-lo); border-color: var(--green-bd); color: #3C7850; }
+.chip.t { background: var(--teal-lo);  border-color: var(--teal-bd);  color: #287882; }
+.chip.p { background: var(--pink-lo);  border-color: var(--pink-bd);  color: #8C4A60; }
+
+/* Connectors */
+.conn {
+  display: flex; justify-content: center; align-items: center;
+  height: 1.5rem; position: relative;
+}
+.conn::before { content:''; position:absolute; top:0; bottom:0; left:50%; width:1px; background: var(--dashed); }
+.conn .arr {
+  width: 6px; height: 6px;
+  border-right: 1.5px solid var(--faint); border-bottom: 1.5px solid var(--faint);
+  transform: rotate(45deg);
+  position: relative; z-index:1; background: var(--bg-page);
+  animation: arrPulse 2s ease-in-out infinite;
+}
+@keyframes arrPulse { 0%,100% { opacity:0.5; } 50% { opacity:1; } }
+
+/* Card entrance */
+@keyframes cardIn {
+  from { opacity:0; transform: translateY(6px) scale(0.99); }
+  to   { opacity:1; transform: translateY(0)   scale(1); }
+}
+.animcard { opacity: 0; }
+.animcard.revealed { animation: cardIn 0.38s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+/* ════════════ ARCH ROW (Panel 1) ════════════ */
+.arch-row {
+  display: flex; align-items: flex-start; gap: 0.875rem;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 0.8rem 1rem;
+}
+.arch-row.a { border-color: var(--amber-bd); background: var(--amber-lo); --card-hover-border: var(--amber-bd); }
+.arch-row.b { border-color: var(--blue-bd);  background: var(--blue-lo);  --card-hover-border: var(--blue-bd); }
+.arch-row.g { border-color: var(--green-bd); background: var(--green-lo); --card-hover-border: var(--green-bd); }
+.arch-row.t { border-color: var(--teal-bd);  background: var(--teal-lo);  --card-hover-border: var(--teal-bd); }
+.arch-tag {
+  flex-shrink:0; width:32px; height:32px; border-radius:50%;
+  background: var(--bg3); border: 1px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.78rem; font-weight:500; color: var(--muted);
+  margin-top: 1px;
+}
+.arch-row.a .arch-tag { background: var(--amber-lo); border-color: var(--amber-bd); color: var(--amber); }
+.arch-row.b .arch-tag { background: var(--blue-lo);  border-color: var(--blue-bd);  color: #485F9B; }
+.arch-row.g .arch-tag { background: var(--green-lo); border-color: var(--green-bd); color: #3C7850; }
+.arch-row.t .arch-tag { background: var(--teal-lo);  border-color: var(--teal-bd);  color: #287882; }
+.arch-info { flex:1; }
+.arch-info h3 { font-size:0.9rem; font-weight:500; margin-bottom:0.2rem; }
+.arch-info p  { font-size:0.7rem; font-weight:300; color:var(--muted); line-height:1.55; }
+
+/* ════════════ MODE CARDS (Panel 2) ════════════ */
+.mode-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 1rem 1rem 0.875rem;
+  position: relative; overflow: hidden;
+}
+.mode-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius: 12px 12px 0 0;
+}
+.mode-card.m1::before { background: linear-gradient(90deg, #9E7A45, #C4A06A); }
+.mode-card.m2::before { background: linear-gradient(90deg, #485F9B, #7890C8); }
+.mode-card.m3::before { background: linear-gradient(90deg, #3C7850, #68A880); }
+.mode-card.m4::before { background: linear-gradient(90deg, #8C4A60, #B87090); }
+.mode-card.m1 { --card-hover-border: rgba(158,122,69,0.35); }
+.mode-card.m2 { --card-hover-border: rgba(72,95,155,0.35); }
+.mode-card.m3 { --card-hover-border: rgba(60,120,80,0.35); }
+.mode-card.m4 { --card-hover-border: rgba(140,74,96,0.35); }
+.mode-card .mn { font-size:0.6rem; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--faint); margin-bottom:0.4rem; }
+.mode-card h3 { font-size:0.95rem; font-weight:500; margin-bottom:0.15rem; }
+.mode-card .me { font-size:0.65rem; font-weight:300; color:var(--faint); letter-spacing:0.06em; margin-bottom:0.45rem; }
+.mode-card .trig {
+  font-size:0.65rem; color:var(--muted); background:var(--bg2);
+  border:1px solid var(--line); border-radius:4px;
+  padding:0.18rem 0.45rem; display:inline-block; margin-bottom:0.45rem;
+}
+.mode-card p { font-size:0.7rem; font-weight:300; color:var(--muted); line-height:1.6; }
+.mode-steps { margin-top:0.55rem; display:flex; flex-direction:column; gap:0.22rem; }
+.mstep { font-size:0.65rem; color:var(--muted); display:flex; gap:0.35rem; align-items:flex-start; }
+.mstep::before {
+  content:attr(data-n); font-family:'Cormorant Garamond',serif; font-style:italic;
+  font-size:0.68rem; color:var(--faint); flex-shrink:0; margin-top:0.5px;
+}
+
+/* ════════════ SKILLS PANEL (Panel 3) ════════════ */
+.skills-box {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; padding: 1.125rem;
+}
+.skill-section { margin-bottom: 0.875rem; }
+.skill-section:last-child { margin-bottom: 0; }
+.skill-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.skill-label {
+  font-size: 0.58rem; font-weight: 500; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--faint);
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 3px; padding: 0.12rem 0.42rem;
+}
+.skill-count {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 0.72rem; color: var(--amber);
+}
+.skill-ep {
+  font-size: 0.62rem; color: var(--faint);
+  font-family: monospace; background: var(--bg2);
+  border: 1px solid var(--line); border-radius: 3px;
+  padding: 0.1rem 0.4rem; margin-left: auto;
+}
+.skill-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.3rem; }
+.skill-grid.g3x { grid-template-columns: repeat(3,1fr); }
+.skill-item {
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 0.45rem 0.5rem;
+  transition: background 0.18s, transform 0.18s, border-color 0.18s;
+  cursor: default;
+}
+.skill-item:hover { background: var(--card); transform: scale(1.02); border-color: var(--amber-bd); }
+.skill-item .si-id { font-size: 0.58rem; font-family: monospace; color: var(--faint); margin-bottom: 0.18rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skill-item .si-name { font-size: 0.68rem; font-weight: 500; color: var(--text); margin-bottom: 0.12rem; }
+.skill-item .si-cap  { font-size: 0.6rem; color: var(--muted); line-height: 1.45; }
+.skill-item.b .si-id { color: #485F9B; }
+.skill-item.g .si-id { color: #3C7850; }
+.skill-item.p .si-id { color: #8C4A60; }
+.skill-item.b { border-color: var(--blue-bd); background: var(--blue-lo); }
+.skill-item.g { border-color: var(--green-bd); background: var(--green-lo); }
+.skill-item.p { border-color: var(--pink-bd);  background: var(--pink-lo); }
+
+/* ════════════ DATA FLOW (Panel 4) ════════════ */
+.src-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 0.9rem;
+}
+.src-label { font-size:0.56rem; font-weight:500; letter-spacing:0.2em; text-transform:uppercase; color:var(--faint); margin-bottom:0.4rem; }
+.src-card h3 { font-size:0.88rem; font-weight:500; margin-bottom:0.2rem; }
+.src-scope { font-size:0.65rem; color:var(--faint); margin-bottom:0.5rem; }
+.src-list { display:flex; flex-direction:column; gap:0.2rem; }
+.src-item { font-size:0.65rem; color:var(--muted); display:flex; align-items:center; gap:0.3rem; }
+.dot { width:3px; height:3px; border-radius:50%; background:var(--faint); flex-shrink:0; }
+.merge-row {
+  background: var(--bg2); border: 1px dashed var(--dashed);
+  border-radius: 8px; padding: 0.7rem 1rem;
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+}
+.merge-row .ml { font-size:0.7rem; color:var(--muted); }
+.flow-step {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: 0.6rem 0.875rem;
+  display: flex; align-items: flex-start; gap: 0.6rem;
+}
+.flow-num {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 1.1rem; color: var(--amber); flex-shrink: 0; line-height: 1;
+  margin-top: 0.1rem;
+}
+.flow-body h4 { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.12rem; }
+.flow-body p  { font-size: 0.67rem; font-weight: 300; color: var(--muted); line-height: 1.5; }
+
+/* ════════════ KNOWLEDGE LOOP (Panel 5) ════════════ */
+.loop-wrap {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; padding: 1.25rem;
+}
+.loop-2col { display:grid; grid-template-columns:1fr 40px 1fr; gap:0; align-items:stretch; margin-bottom:1rem; }
+.loop-side {
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 0.875rem;
+}
+.loop-side.r { border-color: var(--blue-bd);  background: var(--blue-lo); }
+.loop-side.w { border-color: var(--green-bd); background: var(--green-lo); }
+.ls-label { font-size:0.56rem; font-weight:500; letter-spacing:0.2em; text-transform:uppercase; margin-bottom:0.4rem; }
+.loop-side.r .ls-label { color:#485F9B; }
+.loop-side.w .ls-label { color:#3C7850; }
+.loop-side h4 { font-size:0.85rem; font-weight:500; margin-bottom:0.25rem; }
+.loop-side p  { font-size:0.67rem; font-weight:300; color:var(--muted); line-height:1.55; }
+.loop-mid { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.2rem; }
+.loop-mid .sym { font-size:0.9rem; color:var(--faint); animation: symBlink 2s ease-in-out infinite; }
+@keyframes symBlink { 0%,100%{opacity:0.4} 50%{opacity:1} }
+.loop-mid .sym:last-child { animation-delay: 0.5s; }
+.kb-box {
+  background: var(--bg2); border: 1px dashed var(--dashed);
+  border-radius: 8px; padding: 0.875rem 1rem;
+}
+.kb-box h4 { font-size:0.85rem; font-weight:500; text-align:center; margin-bottom:0.5rem; }
+.kb-grid { display:grid; grid-template-columns: repeat(4,1fr); gap:0.3rem; }
+.kb-chip {
+  font-size:0.63rem; color:var(--text); background:var(--card);
+  border:1px solid var(--line); border-radius:5px;
+  padding:0.22rem 0.45rem;
+  display:flex; align-items:center; gap:0.25rem;
+  transition: background 0.18s, transform 0.18s;
+}
+.kb-chip:hover { background: var(--bg); transform: scale(1.02); }
+.confirm-note {
+  background: var(--amber-lo); border: 1px solid var(--amber-bd);
+  border-radius: 7px; padding: 0.65rem 0.875rem;
+  display: flex; gap: 0.6rem; align-items: flex-start; margin-top: 0.875rem;
+}
+.confirm-note p { font-size:0.68rem; color:var(--muted); line-height:1.6; }
+.confirm-note strong { color:var(--amber); }
+
+/* ════════════ ADR (Panel 6) ════════════ */
+.adr-list { display:flex; flex-direction:column; gap:0.5rem; }
+.adr-item {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden; cursor: pointer;
+}
+.adr-hd {
+  display:flex; align-items:center; gap:0.875rem;
+  padding: 0.875rem 1rem; user-select:none;
+  transition: background 0.2s;
+}
+.adr-hd:hover { background: var(--bg2); }
+.adr-id { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.75rem; color:var(--amber); flex-shrink:0; min-width:50px; }
+.adr-title { font-size:0.85rem; font-weight:500; flex:1; }
+.adr-badge { font-size:0.58rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:#3C7850; background:var(--green-lo); border:1px solid var(--green-bd); border-radius:3px; padding:0.1rem 0.35rem; flex-shrink:0; }
+.adr-chev { flex-shrink:0; color:var(--faint); font-size:0.75rem; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.adr-item.open .adr-chev { transform: rotate(180deg); }
+.adr-bd { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), padding 0.3s; padding: 0 1rem; }
+.adr-item.open .adr-bd { max-height: 500px; padding: 0 1rem 1rem; border-top: 1px solid var(--line); }
+.adr-section { margin-bottom:0.65rem; padding-top:0.65rem; }
+.adr-section h5 { font-size:0.58rem; font-weight:500; letter-spacing:0.18em; text-transform:uppercase; color:var(--faint); margin-bottom:0.35rem; }
+.adr-section p { font-size:0.7rem; font-weight:300; color:var(--muted); line-height:1.65; }
+.adr-opts { display:flex; flex-direction:column; gap:0.25rem; margin-top:0.25rem; }
+.adr-opt { font-size:0.68rem; color:var(--muted); display:flex; gap:0.45rem; align-items:flex-start; }
+.badge { flex-shrink:0; font-size:0.58rem; font-weight:500; padding:0.1rem 0.35rem; border-radius:2px; margin-top:1.5px; }
+.badge.on  { background:var(--amber-lo); border:1px solid var(--amber-bd); color:var(--amber); }
+.badge.off { background:var(--bg3); border:1px solid var(--line); color:var(--faint); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-title">投资交易<br>分析引擎</div>
+    <div class="brand-subtitle">iwencai-investment-engine · Architecture</div>
+    <div class="brand-tags">
+      <span class="brand-tag">轻量化</span>
+      <span class="brand-tag">同花顺问财</span>
+      <span class="brand-tag">语雀联动</span>
+    </div>
+    <div class="brand-slogan">
+      三类信息孤岛，一个分析引擎<br>
+      让每次分析<br>都成为知识的沉淀
+    </div>
+  </div>
+
+  <div class="side-div"></div>
+
+  <nav class="sidebar-nav" id="sideNav">
+    <div class="nav-indicator" id="navInd"></div>
+    <button class="nav-item active" data-panel="p-overview">
+      <span class="nav-dot"></span>架构全景
+    </button>
+    <button class="nav-item" data-panel="p-modes">
+      <span class="nav-dot"></span>四种分析模式
+    </button>
+    <button class="nav-item" data-panel="p-skills">
+      <span class="nav-dot"></span>iwencai Skills 体系
+    </button>
+    <button class="nav-item" data-panel="p-dataflow">
+      <span class="nav-dot"></span>端到端数据流
+    </button>
+    <button class="nav-item" data-panel="p-knowledge">
+      <span class="nav-dot"></span>知识闭环
+    </button>
+    <button class="nav-item" data-panel="p-adr">
+      <span class="nav-dot"></span>ADR 设计决策
+    </button>
+  </nav>
+
+  <div class="side-footer">v1.0 · 2026-04-17 · MoCha.</div>
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<main class="main-content">
+
+  <!-- ── Panel 1: 架构全景 ── -->
+  <section class="panel active" id="p-overview">
+    <div class="ph">
+      <h1>架构全景</h1>
+      <p>四层职责分离 · CLAUDE.md 全局路由 · iwencai Skills 按需编排 · 语雀 MCP 知识闭环</p>
+    </div>
+
+    <!-- L1 用户对话层 -->
+    <div class="arch-row animcard">
+      <div class="arch-tag">L1</div>
+      <div class="arch-info">
+        <h3>用户对话层</h3>
+        <p>通过自然语言触发分析指令，持仓数据每次手动输入，不经任何第三方接口传输，零配置上手。</p>
+        <div class="chips">
+          <span class="chip">Claude Code CLI</span>
+          <span class="chip">Web App</span>
+          <span class="chip">IDE Extension</span>
+          <span class="chip">自然语言指令</span>
+          <span class="chip">手动输入持仓</span>
+        </div>
+      </div>
+    </div>
+    <div class="conn animcard"><div class="arr"></div></div>
+
+    <!-- L2 路由与编排层 -->
+    <div class="arch-row a animcard">
+      <div class="arch-tag">L2</div>
+      <div class="arch-info">
+        <h3>路由与编排层 · CLAUDE.md + investment-engine SKILL.md</h3>
+        <p>CLAUDE.md 作为项目大脑全局加载，定义触发词路由规则与语雀配置；investment-engine SKILL.md 承载四种分析模式的完整编排逻辑、情绪刹车机制和五维分析框架。</p>
+        <div class="chips">
+          <span class="chip a">模式路由规则</span>
+          <span class="chip a">情绪刹车机制</span>
+          <span class="chip a">五维分析框架</span>
+          <span class="chip">Skills 调用编排</span>
+          <span class="chip">输出格式规范</span>
+          <span class="chip">语雀集成规范</span>
+        </div>
+      </div>
+    </div>
+    <div class="conn animcard"><div class="arr"></div></div>
+
+    <!-- L3a + L3b 并排 -->
+    <div class="g2 animcard">
+      <div class="arch-row b" style="margin:0;">
+        <div class="arch-tag" style="background:var(--blue-lo);border-color:var(--blue-bd);color:#485F9B;">L3a</div>
+        <div class="arch-info">
+          <h3>市场数据层 · iwencai Skills</h3>
+          <p>15 个 Skills 覆盖同花顺问财 OpenAPI 全品类数据，Bearer Token 认证，数据查询与资讯搜索两大端点。</p>
+          <div class="chips">
+            <span class="chip b">query2data</span>
+            <span class="chip b">comprehensive/search</span>
+            <span class="chip b">IWENCAI_API_KEY</span>
+          </div>
+        </div>
+      </div>
+      <div class="arch-row g" style="margin:0;">
+        <div class="arch-tag" style="background:var(--green-lo);border-color:var(--green-bd);color:#3C7850;">L3b</div>
+        <div class="arch-info">
+          <h3>知识存储层 · 语雀 MCP</h3>
+          <p>双向操作：分析前自动检索历史经验注入上下文，分析后用户确认写回，形成知识正循环。</p>
+          <div class="chips">
+            <span class="chip g">yuque_search</span>
+            <span class="chip g">yuque_create_doc</span>
+            <span class="chip g">yuque_update_toc</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="conn animcard"><div class="arr"></div></div>
+
+    <!-- L4 输出层 -->
+    <div class="arch-row animcard">
+      <div class="arch-tag">L4</div>
+      <div class="arch-info">
+        <h3>分析输出层</h3>
+        <p>结构化 Markdown 报告，综合市场数据 + 历史知识，区分事实陈述与主观判断，标注同花顺问财数据来源，用户决策是否写回语雀形成闭环。</p>
+        <div class="chips">
+          <span class="chip">结构化 Markdown</span>
+          <span class="chip">事实/判断分离</span>
+          <span class="chip a">可选写回语雀</span>
+          <span class="chip">数据来源标注</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设计约束 -->
+    <div style="margin-top:0.875rem;" class="animcard">
+      <div class="sl">设计约束</div>
+      <div class="g2">
+        <div class="card">
+          <div class="cn">Constraint 01</div>
+          <div class="ct">轻量优先</div>
+          <div class="cd">不引入独立数据库或持续部署服务，全部能力通过 Claude Code 配置文件实现</div>
+        </div>
+        <div class="card">
+          <div class="cn">Constraint 02</div>
+          <div class="ct">数据获取约束</div>
+          <div class="cd">所有金融市场数据统一通过 iwencai Skills 调用，不在 investment-engine 层编写 API 脚本</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Panel 2: 四种模式 ── -->
+  <section class="panel" id="p-modes">
+    <div class="ph">
+      <h1>四种分析模式</h1>
+      <p>覆盖投资决策全生命周期 · 情绪刹车优先执行 · 每种模式有固定触发词、数据编排与输出格式</p>
+    </div>
+
+    <!-- 情绪刹车全局提示 -->
+    <div class="animcard" style="margin-bottom:0.875rem;">
+      <div class="confirm-note">
+        <span style="font-size:0.95rem;flex-shrink:0;">🛑</span>
+        <p><strong>情绪刹车（全局前置）：</strong>任何模式进入分析前，优先检测追涨冲动 / 恐慌抛售 / FOMO / 从众等情绪信号。检测到时先暂停，要求用户回答「把价格涨跌忽略掉，只看基本面，你还会这样判断吗？」，等用户理性确认后再继续。</p>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="mode-card m1 animcard">
+        <div class="mn">Mode A</div>
+        <h3>持仓复盘</h3>
+        <div class="me">Portfolio Review</div>
+        <span class="trig">触发：「复盘 / 持仓情况 / 看看我的仓」</span>
+        <p>全量持仓健康诊断，三色信号（🟢🟡🔴）综合评估行情、财务、机构三维度，联动历史记录。</p>
+        <div class="mode-steps">
+          <div class="mstep" data-n="①">用户输入持仓列表（标的 + 比例，可选均价/盈亏）</div>
+          <div class="mstep" data-n="②">每只标的循环调用：market / finance / insresearch</div>
+          <div class="mstep" data-n="③">yuque_search 检索该标的历史记录注入上下文</div>
+          <div class="mstep" data-n="④">输出健康度评估表 + 持仓整体小结</div>
+        </div>
+        <div class="chips" style="margin-top:0.5rem;">
+          <span class="chip a">hithink-market-query</span>
+          <span class="chip a">hithink-finance-query</span>
+          <span class="chip a">hithink-insresearch-query</span>
+        </div>
+      </div>
+
+      <div class="mode-card m2 animcard">
+        <div class="mn">Mode B</div>
+        <h3>买卖决策</h3>
+        <div class="me">Trade Decision</div>
+        <span class="trig">触发：「买 / 卖 / 加仓 / 止损 / 要不要」</span>
+        <p>单一标的操作判断，五维分析框架按需展开 2-4 个维度，必写最强反对意见，结合语雀历史逻辑。</p>
+        <div class="mode-steps">
+          <div class="mstep" data-n="①">情绪刹车 + yuque_search 历史操作记录（最关键）</div>
+          <div class="mstep" data-n="②">market（52周分位）/ finance（PE/PB/PEG）/ insresearch</div>
+          <div class="mstep" data-n="③">announcement-search 近期公告 + news-search 催化剂</div>
+          <div class="mstep" data-n="④">输出综合判断（支持/谨慎/反对）+ 必写最强反对意见</div>
+        </div>
+        <div class="chips" style="margin-top:0.5rem;">
+          <span class="chip b">五维分析框架</span>
+          <span class="chip b">announcement-search</span>
+          <span class="chip b">news-search</span>
+        </div>
+      </div>
+
+      <div class="mode-card m3 animcard">
+        <div class="mn">Mode C</div>
+        <h3>宏观分析</h3>
+        <div class="me">Macro Analysis</div>
+        <span class="trig">触发：「宏观 / 政策 / 消息影响 / 大盘」</span>
+        <p>宏观事件传导链分析，覆盖持仓所在行业的资金流向与估值分位，联动历史相似宏观应对记录。</p>
+        <div class="mode-steps">
+          <div class="mstep" data-n="①">yuque_search 相似宏观环境下历史应对记录</div>
+          <div class="mstep" data-n="②">macro-query 指标序列 + zhishu-query 指数反应</div>
+          <div class="mstep" data-n="③">sector-selector 持仓行业资金流向（最多3个）</div>
+          <div class="mstep" data-n="④">news-search 机构解读 + report-search 策略研报</div>
+          <div class="mstep" data-n="⑤">输出传导链 + 持仓影响表 + 建议动作优先级</div>
+        </div>
+        <div class="chips" style="margin-top:0.5rem;">
+          <span class="chip g">hithink-macro-query</span>
+          <span class="chip g">hithink-sector-selector</span>
+          <span class="chip g">report-search</span>
+          <span class="chip" style="font-size:0.56rem;color:var(--faint);">数据管道：references/mode-c-data-pipeline.md</span>
+        </div>
+      </div>
+
+      <div class="mode-card m4 animcard">
+        <div class="mn">Mode D</div>
+        <h3>个股研究</h3>
+        <div class="me">Stock Research</div>
+        <span class="trig">触发：「研究 / 深挖 / 分析 / 生成研报」</span>
+        <p>最全面的分析模式，10 步数据编排，从基础资料到机构评级全维度覆盖，生成标准化研究报告。</p>
+        <div class="mode-steps">
+          <div class="mstep" data-n="①">basicinfo 基础资料 + market 行情全貌</div>
+          <div class="mstep" data-n="②">finance × 3（利润表 / 资产负债表 / 估值分位）</div>
+          <div class="mstep" data-n="③">insresearch 机构评级 + announcement 近期公告</div>
+          <div class="mstep" data-n="④">report-search 深度研报 + news-search 近期新闻</div>
+          <div class="mstep" data-n="⑤">sector-selector 行业背景 + yuque 历史记录</div>
+        </div>
+        <div class="chips" style="margin-top:0.5rem;">
+          <span class="chip p">10步数据编排</span>
+          <span class="chip p">hithink-basicinfo-query</span>
+          <span class="chip p">report-search</span>
+          <span class="chip" style="font-size:0.56rem;color:var(--faint);">数据管道：references/mode-d-data-pipeline.md</span>
+          <span class="chip" style="font-size:0.56rem;color:var(--faint);">报告模板：assets/mode-d-report-template.md</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 五维分析框架 -->
+    <div class="animcard" style="margin-top:0.875rem;">
+      <div class="sl">五维分析框架（Mode B 专用，选取 2-4 个最相关维度）</div>
+      <div class="g3" style="margin-top:0.5rem;">
+        <div class="card a">
+          <div class="cn">Dim 01</div>
+          <div class="ct">业务理解与护城河</div>
+          <div class="cd">公司靠什么赚钱？品牌/成本/网络效应/牌照壁垒是什么？</div>
+        </div>
+        <div class="card b">
+          <div class="cn">Dim 02</div>
+          <div class="ct">估值与安全边际</div>
+          <div class="cd">PE/PB/PEG 历史分位，当前价格在 52 周区间哪个分位？</div>
+        </div>
+        <div class="card">
+          <div class="cn">Dim 03</div>
+          <div class="ct">仓位合理性</div>
+          <div class="cd">单标的上限 20-25%，超 30% 先停止加仓，加仓理由检验</div>
+        </div>
+        <div class="card g">
+          <div class="cn">Dim 04</div>
+          <div class="ct">情绪隔离</div>
+          <div class="cd">触发器是基本面还是价格信号？近因偏误 / 锚定效应检测</div>
+        </div>
+        <div class="card p">
+          <div class="cn">Dim 05</div>
+          <div class="ct">持有逻辑检验</div>
+          <div class="cd">当初买入逻辑现在还成立吗？空仓测试：重来还会买吗？</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Panel 3: iwencai Skills ── -->
+  <section class="panel" id="p-skills">
+    <div class="ph">
+      <h1>iwencai Skills 体系</h1>
+      <p>15 个 Skills，覆盖同花顺问财 OpenAPI 全品类 · 两大端点 · Bearer Token 统一认证</p>
+    </div>
+
+    <div class="skills-box animcard">
+      <!-- API 端点说明 -->
+      <div class="g2" style="margin-bottom:0.875rem;">
+        <div class="card b">
+          <div class="cn">Endpoint A</div>
+          <div class="ct">POST /v1/query2data</div>
+          <div class="cd">结构化金融数据查询，返回字段化数据表格，空数据时 Selector 类自动放宽条件重试最多 2 次</div>
+          <div class="chips"><span class="chip b">数据查询类 7 个</span><span class="chip b">智能筛选类 5 个</span></div>
+        </div>
+        <div class="card p">
+          <div class="cn">Endpoint B</div>
+          <div class="ct">POST /v1/comprehensive/search</div>
+          <div class="cd">资讯全文搜索，固定参数 app_id: "AIME_SKILL"，通过 channels 区分新闻/公告/研报</div>
+          <div class="chips"><span class="chip p">资讯搜索类 3 个</span></div>
+        </div>
+      </div>
+
+      <!-- 数据查询类 -->
+      <div class="skill-section">
+        <div class="skill-head">
+          <span class="skill-label">数据查询类</span>
+          <span class="skill-count">7 个</span>
+          <span class="skill-ep">/v1/query2data</span>
+        </div>
+        <div class="skill-grid">
+          <div class="skill-item b">
+            <div class="si-id">hithink-market-query</div>
+            <div class="si-name">行情数据</div>
+            <div class="si-cap">实时价格 · 涨跌幅 · 主力净流入 · MACD/KDJ/RSI · 52周高低</div>
+          </div>
+          <div class="skill-item b">
+            <div class="si-id">hithink-finance-query</div>
+            <div class="si-name">财务数据</div>
+            <div class="si-cap">营收 · 净利润 · ROE · 自由现金流 · PE/PB/PEG · 近三年趋势</div>
+          </div>
+          <div class="skill-item b">
+            <div class="si-id">hithink-basicinfo-query</div>
+            <div class="si-name">基本资料</div>
+            <div class="si-cap">上市日期 · 行业分类 · 主营业务 · 基金费率 · 期货合约信息</div>
+          </div>
+          <div class="skill-item b">
+            <div class="si-id">hithink-insresearch-query</div>
+            <div class="si-name">机构研究</div>
+            <div class="si-cap">研报评级分布 · EPS预测 · 目标价区间 · 基金星级</div>
+          </div>
+          <div class="skill-item b">
+            <div class="si-id">hithink-macro-query</div>
+            <div class="si-name">宏观数据</div>
+            <div class="si-cap">GDP · CPI/PPI · M2 · PMI · 社融 · LPR · 汇率 · 进出口</div>
+          </div>
+          <div class="skill-item b">
+            <div class="si-id">hithink-zhishu-query</div>
+            <div class="si-name">指数行情</div>
+            <div class="si-cap">上证/深证/创业板/沪深300/中证500/恒生/纳斯达克点位及涨跌幅</div>
+          </div>
+          <div class="skill-item b">
+            <div class="si-id">hithink-futures-query</div>
+            <div class="si-name">期货期权</div>
+            <div class="si-cap">期货行情 · 隐含/历史波动率 · 库存产量 · 会员持仓排行</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 智能筛选类 -->
+      <div class="skill-section">
+        <div class="skill-head">
+          <span class="skill-label">智能筛选类</span>
+          <span class="skill-count">5 个</span>
+          <span class="skill-ep">/v1/query2data · 空数据自动放宽重试</span>
+        </div>
+        <div class="skill-grid g3x">
+          <div class="skill-item">
+            <div class="si-id">hithink-astock-selector</div>
+            <div class="si-name">A 股筛选</div>
+            <div class="si-cap">行情指标 · 技术形态（均线/突破/K线）· 财务指标 · 行业概念</div>
+          </div>
+          <div class="skill-item">
+            <div class="si-id">hithink-etf-selector</div>
+            <div class="si-name">ETF 筛选</div>
+            <div class="si-cap">跟踪指数 · 资产规模/份额变化 · 费率/跟踪误差 · 风格类型</div>
+          </div>
+          <div class="skill-item">
+            <div class="si-id">hithink-sector-selector</div>
+            <div class="si-name">板块筛选</div>
+            <div class="si-cap">行业PE/PB估值分位 · 主力净流入/北向资金 · 涨跌幅排名</div>
+          </div>
+          <div class="skill-item">
+            <div class="si-id">hithink-hkstock-selector</div>
+            <div class="si-name">港股筛选</div>
+            <div class="si-cap">行情/财务/行业概念 · 陆港通持股（北向/南向）</div>
+          </div>
+          <div class="skill-item">
+            <div class="si-id">hithink-usstock-selector</div>
+            <div class="si-name">美股筛选</div>
+            <div class="si-cap">行情/财务/行业概念 · 业绩预测盈利增速 · 研报评级</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 资讯搜索类 -->
+      <div class="skill-section">
+        <div class="skill-head">
+          <span class="skill-label">资讯搜索类</span>
+          <span class="skill-count">3 个</span>
+          <span class="skill-ep">/v1/comprehensive/search · app_id: "AIME_SKILL"</span>
+        </div>
+        <div class="skill-grid g3x">
+          <div class="skill-item p">
+            <div class="si-id">news-search · ["news"]</div>
+            <div class="si-name">财经新闻</div>
+            <div class="si-cap">官媒 · 主流财经媒体 · 垂直行业网站 · 上市公司官网 · 政策/行业/企业动态</div>
+          </div>
+          <div class="skill-item p">
+            <div class="si-id">announcement-search · ["announcement"]</div>
+            <div class="si-name">公告搜索</div>
+            <div class="si-cap">A股/港股/基金/ETF公告 · 定期报告 · 分红回购 · 资产重组 · 业绩预告</div>
+          </div>
+          <div class="skill-item p">
+            <div class="si-id">report-search · ["report"]</div>
+            <div class="si-name">研报搜索</div>
+            <div class="si-cap">券商/基金/独立研究机构深度报告 · 分析逻辑/投资评级/目标价/风险提示</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skill 文件结构 -->
+    <div class="animcard" style="margin-top:0.875rem;">
+      <div class="sl">每个 Skill 的目录结构</div>
+      <div class="g3">
+        <div class="card">
+          <div class="cn">File 01</div>
+          <div class="ct">SKILL.md</div>
+          <div class="cd">技能说明（含 name/description frontmatter），由 Claude Skill 工具加载执行</div>
+        </div>
+        <div class="card">
+          <div class="cn">File 02</div>
+          <div class="ct">references/api.md</div>
+          <div class="cd">接口文档，记录端点、请求参数、响应字段说明（部分 Skill 含此文件）</div>
+        </div>
+        <div class="card">
+          <div class="cn">File 03</div>
+          <div class="ct">scripts/cli.py</div>
+          <div class="cd">CLI 入口，可独立命令行调用；Skill 执行时通过 Bash 工具调用此脚本</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Panel 4: 端到端数据流 ── -->
+  <section class="panel" id="p-dataflow">
+    <div class="ph">
+      <h1>端到端数据流</h1>
+      <p>从用户输入到分析报告输出，6 个关键节点，市场数据与知识库双轨并行</p>
+    </div>
+
+    <!-- 流程步骤 -->
+    <div style="display:flex;flex-direction:column;gap:0.4rem;" class="animcard">
+      <div class="flow-step">
+        <div class="flow-num">①</div>
+        <div class="flow-body">
+          <h4>CLAUDE.md 路由规则匹配 → 激活 investment-engine Skill</h4>
+          <p>检测用户输入的关键词，匹配四种模式触发词（持仓相关/买卖操作/宏观事件/个股研究），激活对应 Skill 注入上下文</p>
+        </div>
+      </div>
+      <div class="flow-step" style="border-color:rgba(220,100,100,0.25);background:rgba(220,100,100,0.04);">
+        <div class="flow-num" style="color:#8C4A60;">②</div>
+        <div class="flow-body">
+          <h4>情绪刹车检测（全局前置）</h4>
+          <p>检测追涨冲动 / 恐慌抛售 / FOMO 等情绪信号 → 检测到则暂停分析，输出情绪隔离提问，等用户理性确认后继续</p>
+        </div>
+      </div>
+      <div class="flow-step" style="border-color:var(--green-bd);background:var(--green-lo);">
+        <div class="flow-num" style="color:#3C7850;">③</div>
+        <div class="flow-body">
+          <h4>语雀知识库检索（前置步骤）</h4>
+          <p>mcp__yuque-mcp__yuque_search({q: "标的名/宏观关键词", type: "doc"}) → 取最相关 2-3 条标题+摘要+日期，注入分析上下文；无结果时继续分析</p>
+        </div>
+      </div>
+      <div class="flow-step" style="border-color:var(--blue-bd);background:var(--blue-lo);">
+        <div class="flow-num" style="color:#485F9B;">④</div>
+        <div class="flow-body">
+          <h4>按模式并发/串行调用 iwencai Skills</h4>
+          <p>数据查询类 → POST /v1/query2data（返回结构化数据表格）· 资讯搜索类 → POST /v1/comprehensive/search（返回新闻/公告/研报列表）· 数据缺失时标注「暂无数据」不中断流程</p>
+        </div>
+      </div>
+      <div class="flow-step" style="border-color:var(--amber-bd);background:var(--amber-lo);">
+        <div class="flow-num">⑤</div>
+        <div class="flow-body">
+          <h4>综合分析 → 输出结构化报告</h4>
+          <p>市场数据 + 语雀历史经验 → 应用五维分析框架（Mode B）或对应模式输出模板 → 生成 Markdown 分析报告，末尾标注「数据来源：同花顺问财」</p>
+        </div>
+      </div>
+      <div class="flow-step" style="border-color:var(--green-bd);background:var(--green-lo);">
+        <div class="flow-num" style="color:#3C7850;">⑥</div>
+        <div class="flow-body">
+          <h4>询问写回语雀 → 用户确认 → 5步写回流程</h4>
+          <p>get_toc 获取 book_id → update_toc 按需创建目录节点 → create_doc 新建文档 → update_toc 挂载到子目录 → 返回文档 URL；失败时输出完整 Markdown 不静默失败</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 两类数据并排 -->
+    <div class="animcard" style="margin-top:0.875rem;">
+      <div class="sl">两类数据通道</div>
+      <div class="g2">
+        <div class="src-card">
+          <div class="src-label">市场数据通道</div>
+          <h3>同花顺问财 OpenAPI</h3>
+          <div class="src-scope">IWENCAI_API_KEY · Bearer Token · 实时拉取</div>
+          <div class="src-list">
+            <div class="src-item"><div class="dot"></div>行情/财务/机构/宏观/指数 → /v1/query2data</div>
+            <div class="src-item"><div class="dot"></div>新闻/公告/研报 → /v1/comprehensive/search</div>
+            <div class="src-item"><div class="dot"></div>返回结构化数据，Claude 提取关键字段</div>
+            <div class="src-item"><div class="dot"></div>数据缺失时标注「暂无」，不中断分析</div>
+          </div>
+        </div>
+        <div class="src-card" style="border-color:var(--green-bd);background:var(--green-lo);">
+          <div class="src-label" style="color:#3C7850;">知识数据通道</div>
+          <h3>语雀 MCP</h3>
+          <div class="src-scope">{YUQUE_NAMESPACE} · yuque-mcp</div>
+          <div class="src-list">
+            <div class="src-item"><div class="dot" style="background:#3C7850;"></div>yuque_search → 检索历史分析记录</div>
+            <div class="src-item"><div class="dot" style="background:#3C7850;"></div>yuque_get_toc → 获取知识库目录结构</div>
+            <div class="src-item"><div class="dot" style="background:#3C7850;"></div>yuque_create_doc → 写入新分析文档</div>
+            <div class="src-item"><div class="dot" style="background:#3C7850;"></div>yuque_update_toc → 挂载文档到对应目录</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Panel 5: 知识闭环 ── -->
+  <section class="panel" id="p-knowledge">
+    <div class="ph">
+      <h1>知识闭环</h1>
+      <p>语雀为个人投资知识的唯一存储源 · 读取自动触发 · 写回用户确认 · 防止噪音污染</p>
+    </div>
+
+    <div class="loop-wrap animcard">
+      <span class="eye" style="display:block;margin-bottom:1rem;">双向知识操作</span>
+      <div class="loop-2col">
+        <div class="loop-side r">
+          <div class="ls-label">读取 · 每次分析前自动触发</div>
+          <h4>历史经验注入</h4>
+          <p>对每种分析模式，在正式数据查询前统一执行语雀检索，取最相关 2-3 条文档的标题+摘要+日期，注入到本次分析的上下文，提供历史操作记录与决策一致性参照。</p>
+          <div class="chips" style="margin-top:0.5rem;">
+            <span class="chip b">yuque_search</span>
+            <span class="chip b">q: 标的名/宏观关键词</span>
+          </div>
+        </div>
+        <div class="loop-mid">
+          <span class="sym">↑</span>
+          <span class="sym">↓</span>
+        </div>
+        <div class="loop-side w">
+          <div class="ls-label">写回 · 用户确认后执行</div>
+          <h4>分析洞见沉淀</h4>
+          <p>分析完成后询问用户是否保存，确认后执行 5 步写回流程，将本次完整分析报告写入对应模式子目录，URL 反馈用户。失败时输出完整 Markdown 不静默失败。</p>
+          <div class="chips" style="margin-top:0.5rem;">
+            <span class="chip g">yuque_get_toc</span>
+            <span class="chip g">yuque_create_doc</span>
+            <span class="chip g">yuque_update_toc</span>
+            <span class="chip" style="font-size:0.56rem;color:var(--faint);">完整流程：references/yuque-writeback-flow.md</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 知识库结构 -->
+      <div class="kb-box animcard">
+        <h4>语雀知识库 · {YUQUE_NAMESPACE}</h4>
+        <div class="kb-grid">
+          <div class="kb-chip">📁 投资分析资产库</div>
+          <div class="kb-chip">📊 持仓复盘/</div>
+          <div class="kb-chip">💹 买卖决策/</div>
+          <div class="kb-chip">🌍 宏观分析/</div>
+          <div class="kb-chip" style="grid-column:span 1;">🔬 个股研究/</div>
+          <div class="kb-chip" style="grid-column:span 3;">文档名：{YYYY-MM-DD} {模式} {关键词}</div>
+        </div>
+      </div>
+
+      <!-- 初始化 -->
+      <div style="margin-top:0.875rem;background:var(--amber-lo);border:1px solid var(--amber-bd);border-radius:8px;padding:0.7rem 0.875rem;" class="animcard">
+        <div class="src-label" style="color:var(--amber);">首次使用初始化</div>
+        <div style="font-size:0.68rem;color:var(--muted);line-height:1.65;">
+          语雀操作需先配置 <code style="font-size:0.66rem;background:var(--bg2);padding:1px 4px;border-radius:3px;">.env</code> 文件：执行 <code style="font-size:0.66rem;background:var(--bg2);padding:1px 4px;border-radius:3px;">cp .env.example .env</code>，填入 <strong>YUQUE_NAMESPACE</strong>、<strong>YUQUE_KB_URL</strong>、<strong>YUQUE_ARCHIVE_DIR</strong>、<strong>IWENCAI_API_KEY</strong>。
+        </div>
+      </div>
+
+      <!-- 时间规范 -->
+      <div style="margin-top:0.875rem;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:0.7rem 0.875rem;" class="animcard">
+        <div class="src-label">时间规范</div>
+        <div style="font-size:0.68rem;color:var(--muted);line-height:1.65;">
+          所有时间统一使用<strong>北京时间（UTC+8）</strong>展示，包括文档标题日期、检索结果时间字段。
+          MCP 接口若需传入 UTC 参数，调用前自动换算（北京时间 -8 小时），对用户完全透明。
+        </div>
+      </div>
+
+      <div class="confirm-note animcard">
+        <span style="font-size:0.95rem;flex-shrink:0;">🔒</span>
+        <p><strong>写回原则：</strong>所有写入操作必须用户主动确认，Claude 不自动写入任何文档。分析结束后仅提示「是否保存到语雀知识库？」由用户决定，确保知识库质量与信噪比。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Panel 6: ADR ── -->
+  <section class="panel" id="p-adr">
+    <div class="ph">
+      <h1>ADR 设计决策</h1>
+      <p>Architecture Decision Records · 关键架构决策记录，说明背景、选项与理由 v1.0</p>
+    </div>
+
+    <div class="adr-list">
+      <div class="adr-item open animcard">
+        <div class="adr-hd" onclick="toggleAdr(this)">
+          <span class="adr-id">ADR-01</span>
+          <span class="adr-title">持仓数据获取：手动输入 vs API 自动拉取</span>
+          <span class="adr-badge">Accepted</span>
+          <span class="adr-chev">▾</span>
+        </div>
+        <div class="adr-bd">
+          <div class="adr-section">
+            <h5>背景</h5>
+            <p>需要获取用户持仓数据（标的名 + 比例 + 可选均价）作为分析输入，可通过券商 API 自动拉取或用户每次手动输入。</p>
+          </div>
+          <div class="adr-section">
+            <h5>选项对比</h5>
+            <div class="adr-opts">
+              <div class="adr-opt"><span class="badge on">采用</span><span>手动输入：零摩擦上手，无需配置任何 API token；每次粘贴时自然形成对持仓的主动审视；数据不经任何第三方接口传输，安全性最高。</span></div>
+              <div class="adr-opt"><span class="badge off">拒绝</span><span>券商 API：需配置 OAuth/token，各券商接口差异大维护成本高；账户数据安全风险；与轻量化设计约束冲突。</span></div>
+            </div>
+          </div>
+          <div class="adr-section"><h5>决策</h5><p>采用手动输入。轻量化目标优先，不为自动化牺牲安全性与上手体验。每次手动输入也是一次对持仓的主动确认。</p></div>
+        </div>
+      </div>
+
+      <div class="adr-item animcard">
+        <div class="adr-hd" onclick="toggleAdr(this)">
+          <span class="adr-id">ADR-02</span>
+          <span class="adr-title">金融市场数据获取：直接调用 API vs 通过 Skills 调用</span>
+          <span class="adr-badge">Accepted</span>
+          <span class="adr-chev">▾</span>
+        </div>
+        <div class="adr-bd">
+          <div class="adr-section">
+            <h5>背景</h5>
+            <p>investment-engine 需要拉取行情/财务/宏观等数据，可在 SKILL.md 中直接编写 Python 脚本调用 API，也可通过已有的 iwencai Skills 间接调用。</p>
+          </div>
+          <div class="adr-section">
+            <h5>选项对比</h5>
+            <div class="adr-opts">
+              <div class="adr-opt"><span class="badge on">采用</span><span>通过 iwencai Skills 调用：各 Skill 封装了数据查询能力和错误处理逻辑，investment-engine 只负责编排，关注点分离，易于维护和扩展。</span></div>
+              <div class="adr-opt"><span class="badge off">拒绝</span><span>直接在 investment-engine 层写脚本：导致数据获取逻辑与分析逻辑耦合，修改 API 端点时需要同时改多处，违背单一职责原则。</span></div>
+            </div>
+          </div>
+          <div class="adr-section"><h5>决策</h5><p>强制约束：所有金融市场数据必须通过项目内 iwencai Skills 调用，investment-engine SKILL.md 只负责编排顺序，不编写 API 调用脚本。</p></div>
+        </div>
+      </div>
+
+      <div class="adr-item animcard">
+        <div class="adr-hd" onclick="toggleAdr(this)">
+          <span class="adr-id">ADR-03</span>
+          <span class="adr-title">语雀写回：自动写入 vs 用户确认后写入</span>
+          <span class="adr-badge">Accepted</span>
+          <span class="adr-chev">▾</span>
+        </div>
+        <div class="adr-bd">
+          <div class="adr-section"><h5>背景</h5><p>分析完成后是否将结果自动写入语雀知识库？自动写入体验流畅，但可能污染知识库质量，引入大量低价值内容。</p></div>
+          <div class="adr-section">
+            <h5>选项对比</h5>
+            <div class="adr-opts">
+              <div class="adr-opt"><span class="badge on">采用</span><span>用户确认写入：分析完成后提示用户是否保存，用户主动决定内容质量，知识库由人把关。语雀是「精华知识库」而非「操作日志」。</span></div>
+              <div class="adr-opt"><span class="badge off">拒绝</span><span>自动写入：体验流畅但引入大量低价值内容，长期导致知识库膨胀、信噪比下降，历史经验检索效果变差。</span></div>
+            </div>
+          </div>
+          <div class="adr-section"><h5>决策</h5><p>所有写入必须用户确认。写入门槛是语雀知识库保持高质量的核心机制。</p></div>
+        </div>
+      </div>
+
+      <div class="adr-item animcard">
+        <div class="adr-hd" onclick="toggleAdr(this)">
+          <span class="adr-id">ADR-04</span>
+          <span class="adr-title">情绪刹车：后置校验 vs 前置拦截</span>
+          <span class="adr-badge">Accepted</span>
+          <span class="adr-chev">▾</span>
+        </div>
+        <div class="adr-bd">
+          <div class="adr-section"><h5>背景</h5><p>用户发出买卖指令时往往夹杂情绪（追涨/恐慌/FOMO）。是在分析完成后在结论部分提示情绪风险，还是在分析开始前先拦截确认？</p></div>
+          <div class="adr-section">
+            <h5>选项对比</h5>
+            <div class="adr-opts">
+              <div class="adr-opt"><span class="badge on">采用</span><span>前置拦截：检测到情绪信号立即暂停，先输出情绪隔离提问，等用户用理性语言重新描述判断后再进入分析。防止用带有情绪的前提条件污染后续分析。</span></div>
+              <div class="adr-opt"><span class="badge off">拒绝</span><span>后置提示：分析完后说「请注意你可能有情绪偏差」。用户已经看到分析结论，确认偏误会让他们倾向于忽略提示，实际效果差。</span></div>
+            </div>
+          </div>
+          <div class="adr-section"><h5>决策</h5><p>情绪刹车作为全局前置步骤，在任何模式的数据拉取之前执行，是分析流程的第一个节点。</p></div>
+        </div>
+      </div>
+
+      <div class="adr-item animcard">
+        <div class="adr-hd" onclick="toggleAdr(this)">
+          <span class="adr-id">ADR-05</span>
+          <span class="adr-title">买卖决策分析维度：全写五维 vs 按场景选取 2-4 维</span>
+          <span class="adr-badge">Accepted</span>
+          <span class="adr-chev">▾</span>
+        </div>
+        <div class="adr-bd">
+          <div class="adr-section"><h5>背景</h5><p>Mode B 有五个分析维度，是每次都全部展开，还是根据用户的具体情况选取最相关的维度？</p></div>
+          <div class="adr-section">
+            <h5>选项对比</h5>
+            <div class="adr-opts">
+              <div class="adr-opt"><span class="badge on">采用</span><span>按场景选取 2-4 维：首次买入未知标的重点写业务理解；加仓已持有的重点写持有逻辑检验；检测到情绪信号重点写情绪隔离。输出更精准，避免千篇一律。</span></div>
+              <div class="adr-opt"><span class="badge off">拒绝</span><span>全写五维：每次分析结构相同，篇幅冗长，用户阅读成本高；很多维度对特定场景并不相关，反而降低分析质量的感知。</span></div>
+            </div>
+          </div>
+          <div class="adr-section"><h5>决策</h5><p>强制要求 2-4 个维度，禁止每次都全写。SKILL.md 明确标注每个维度的「适用场景」，由 Claude 根据用户情况自主选择。</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ── Nav indicator ── */
+const navBtns = document.querySelectorAll('.nav-item');
+const panels  = document.querySelectorAll('.panel');
+const ind     = document.getElementById('navInd');
+const nav     = document.getElementById('sideNav');
+
+function moveIndicator(btn) {
+  const nr = nav.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  ind.style.top    = (br.top - nr.top) + 'px';
+  ind.style.height = br.height + 'px';
+}
+requestAnimationFrame(() => {
+  const active = document.querySelector('.nav-item.active');
+  if (active) moveIndicator(active);
+});
+
+/* ── Tab switching ── */
+function activatePanel(id) {
+  panels.forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  panel.classList.add('active');
+  panel.scrollTop = 0;
+  const cards = panel.querySelectorAll('.animcard');
+  cards.forEach(c => { c.classList.remove('revealed'); c.style.animationDelay = ''; });
+  requestAnimationFrame(() => {
+    cards.forEach((c, i) => {
+      setTimeout(() => {
+        c.classList.add('revealed');
+        c.addEventListener('animationend', () => {
+          c.style.animation = 'none';
+          c.style.opacity = '1';
+          c.style.transform = '';
+        }, { once: true });
+      }, i * 45);
+    });
+  });
+}
+
+navBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    navBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    moveIndicator(btn);
+    activatePanel(btn.dataset.panel);
+  });
+});
+activatePanel('p-overview');
+
+/* ── ADR accordion ── */
+function toggleAdr(hd) {
+  hd.parentElement.classList.toggle('open');
+}
+
+/* ── Subtle background shimmer ── */
+const main = document.querySelector('.main-content');
+main.addEventListener('mousemove', e => {
+  const mx = e.clientX / window.innerWidth;
+  const my = e.clientY / window.innerHeight;
+  main.style.background = `radial-gradient(ellipse at ${mx*100}% ${my*100}%, rgba(240,220,190,0.12) 0%, transparent 60%), var(--bg-page)`;
+});
+</script>
+</body>
+</html>
